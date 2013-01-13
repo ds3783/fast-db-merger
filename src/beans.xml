@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans-2.0.dtd">
+<beans default-autowire="byName">
+    <!--系统配置-->
+    <bean id="configManager" class="com.tgbus.servermerger.config.ConfigManager"
+          init-method="init">
+    </bean>
+    <!--数据源-->
+    <bean id="mergerDataSource" class="com.tgbus.servermerger.MergerDataSource" scope="singleton" init-method="init">
+        <property name="validationQuery" value="select 1 from dual"/>
+        <property name="maxIdle" value="5"/>
+        <property name="maxActive" value="20"/>
+        <property name="initialSize" value="5"/>
+        <property name="timeBetweenEvictionRunsMillis" value="1800000"/>
+        <property name="testWhileIdle" value="true"/>
+        <property name="testOnBorrow" value="false"/>
+    </bean>
+
+    <bean id="springHelper" class="com.tgbus.servermerger.util.SpringHelper"/>
+
+    <bean id="cacheManager" class="com.tgbus.servermerger.datacache.CacheManager"
+          scope="singleton" init-method="init">
+    </bean>
+    <bean id="merger" class="com.tgbus.servermerger.merger.Merger"
+          scope="singleton">
+    </bean>
+    <bean id="progressControl" class="com.tgbus.servermerger.merger.ProgressControl" scope="singleton"
+          init-method="init">
+    </bean>
+    <bean id="moduleMerger" class="com.tgbus.servermerger.merger.ModuleMerger"
+          scope="singleton"></bean>
+    <bean id="tableMerger" class="com.tgbus.servermerger.merger.TableMerger"
+          scope="singleton" init-method="init">
+    </bean>
+
+    <bean id="shutdownHooker" class="com.tgbus.servermerger.ShutdownHooker" scope="prototype"/>
+
+    <bean id="replacer_cache" class="com.tgbus.servermerger.merger.Replacer.CachedReplacer"
+          scope="prototype">
+    </bean>
+    <bean id="replacer_conditionalCache" class="com.tgbus.servermerger.merger.Replacer.ConditionalCachedReaplcer"
+          scope="prototype">
+    </bean>
+    <bean id="replacer_listCache" class="com.tgbus.servermerger.merger.Replacer.ListedCachedReplacer"
+          scope="prototype">
+    </bean>
+    <bean id="replacer_rewrite" class="com.tgbus.servermerger.merger.Replacer.RewriteReplacer"
+          scope="prototype">
+    </bean>
+    <bean id="replacer_name" class="com.tgbus.servermerger.merger.Replacer.NameReplacer"
+          scope="prototype">
+    </bean>
+    <bean id="replacer_unset" class="com.tgbus.servermerger.merger.Replacer.UnsetReplacer"
+          scope="prototype">
+    </bean>
+    <bean id="replacer_default" class="com.tgbus.servermerger.merger.Replacer.DefaultReplacer"
+          scope="prototype">
+    </bean>
+</beans>

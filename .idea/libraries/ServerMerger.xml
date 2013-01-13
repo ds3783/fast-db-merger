@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="ServerMerger">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/libs" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/../../../src/commons-dbcp-1.4-src.zip!/commons-dbcp-1.4-src/src/java" />
+    </SOURCES>
+    <jarDirectory url="file://$PROJECT_DIR$/libs" recursive="false" />
+  </library>
+</component>

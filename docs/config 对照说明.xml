@@ -1,0 +1,178 @@
+<!DOCTYPE datebase SYSTEM "server-merger.dtd">
+<datebase>
+
+    <tasks>                                                                          <!-- tasks 中包含所有需要执行的sql 以及合服的主程序
+                                                                                       type 为sql 执行sql 处理  side定义库是源数据库还是目标数据库 cdata 定义sql
+                                                                                       type  为 merge 执行合服主程序
+                                                                                       注意task需要按顺序写  -->
+        <task type="sql" name ="pre" side="src"><![CDATA[truncate ms_market]]></task>
+        <task type="merge" name="merge"/>
+        <task type="sql"  name="after" side="dest"><![CDATA[update ms_info set en=maxen,state='NORMAL',slavestate='NORMAL']]></task>
+    </tasks>
+
+
+
+
+
+
+    <modules>                                                                                     <!--所有模块-->
+
+        <module id="ms">                                                                         <!--id:模块名  与import_module 中的id对应-->
+            <include type="table" name="ms_info_other"/>
+            <!--name 表名-->
+            <include type="table" name="ms_attradds"/>
+            <include type="table" name="ms_meta"/>												<!-- <include> 模块包含的内容，type=‘table’ name与table 标签中的name对应-->
+            <include type="table" name="ms_quest"/>																	
+            <include type="table" name="ms_questtarget"/>
+            <include type="table" name="ms_vip"/>
+            <include type="table" name="ms_reward"/>
+            <include type="table" name="ms_restlog"/>
+            <include type="table" name="ms_upgrade"/>
+            <include type="table" name="ms_addons"/>
+            <include type="table" name="ms_stock"/>
+            <include type="table" name="ms_partchips"/>
+            <include type="table" name="ms_info_state"/>
+        </module>
+    </modules>
+
+
+
+    
+    <tables>                                                                                                  <!-- tables中包含所有涉及合并的表-->
+
+
+        <table name="ms_info" impl="common" condition="`LEVEL`>30">                                           <!-- name 表名与<include>中的name对应 condition 合服条件可以没有-->
+            <pk unset="true">                                                                                 <!-- unset 主键是否置为空-->
+                <column name="MSID"/>
+																											  <!--name 主键对应字段-->
+            </pk>
+            <replace>						                                                                  <!--<replace> 需要替换的集合-->
+                <replacecolumn type="cache" colname="USERID" canMiss="false" searchMetaId="user_UID">
+                    <columnAlias colname="UID" alias="USERID"/>
+																											 <!-- replacecolumn 替换列
+																											 type 替换的方式
+																											  colname 需要替换的列名
+																											  canMiss 是否可以替换失败
+																											  searchMetaId  替换所要查询的缓存   
+																											  写缓存的字段，与查询是字段如果不同 使用<columnAlias colname="UID" alias="USERID"/>  
+																											  colname 缓存中的字段~ alias为查询时的字段
+																											  -->
+																											  
+                </replacecolumn>
+                <replacecolumn type="rewrite" colname="STATE" canMiss="false" rewriteValue="NORMAL"/>
+																											 <!--  rewriteValue 直接替换成的值-->
+
+                <replacecolumn type="rewrite" colname="STATE" canMiss="false" rewriteValue="NORMAL"/>
+                <replacecolumn type="rewrite" colname="HEADICON" canMiss="false" rewriteValue="null"/>
+                <replacecolumn type="rewrite" colname="AVATAR" canMiss="false" rewriteValue="null"/>
+            </replace>
+            <Cache_write>
+																												 <!-- Cache_write 如果该表需要写入缓存 则需要写该标签 -->
+                <metaid id="ms_info_MSID"/>
+																											     <!--id 定义写入缓存的id  与meta中的id对应-->
+
+            </Cache_write>
+        </table>
+
+
+
+
+
+		<table name="player_meta" impl="common">
+            <pk unset="false">
+                <column name="PLAYERID"/>
+                <column name="CODE"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+                <replacecolumn type="default" colname="VALUE" rewriteValue="0"/>
+                <replacecolumn type="conditionalCache" colname="VALUE" canMiss="true">                                         <!--type="conditionalCache" 条件缓存替换-->            
+                    <columnAlias colname="STOCKID" alias="VALUE"/>
+                    <condition colname="CODE" value="AMULETS" canMiss="true" searchMetaId="player_stock_STOCKID"/> <!-- colname 条件列  value 条件值  如果colname
+																														对应的值与 value相等，则 根据后面的serchMetaId
+																														进行缓存替换， 如果不等向下去找-->   
+                    <condition colname="CODE" value="CHEST" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="CLOAKS" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="FEET" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="HEAD" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="LEGS" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="RING" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="TRINKETS" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="WAIST" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="WEAPON" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="WRIST" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                </replacecolumn>
+            </replace>
+        </table>
+			
+
+		 <table name="server_achieve" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="listCache" colname="PLAYERIDS" determinter="," canMiss="false"    searchMetaId="player_PLAYERID">																																							<!--type="listCache"  colname要替换的列
+																																			determinter 分割符
+																																			用分割符分割出的数据依次
+																																			根据searchmetaId进行缓存替换
+																																			
+																																			-->
+                               
+                    <columnAlias colname="PLAYERID" alias="PLAYERIDS"/>
+                </replacecolumn>
+            </replace>
+        </table>
+
+
+    </tables>
+
+
+    <cache>
+        <metas>
+            <meta id="ms_info_MSID" tableName="ms_info" type="singlon" keyColumn="MSID"><!--定义了表中所有包含的缓存 缓存的id,对应的表，缓存的类型
+																									查询缓存所需键值对性的字段-->
+                <columns>
+                    <column name="MSID" optional="false"/>
+                </columns>
+            </meta>
+        </metas>
+
+		<meta id="user_USERNAME" tableName="users" type="singlon" keyColumn="USERID" global="true">				<!--id="user_USERNAME"的缓存为全局缓存，名字类在做缓存时都应为                                                                                                            全局缓存，因为在合并完成后，不能用有名字重复-->				
+                <columns>
+                    <column name="NAME" optional="false"/>
+                </columns>
+            </meta>
+            <meta id="player_PLAYERID" tableName="players" type="singlon" keyColumn="PLAYERID">
+                <columns>
+                    <column name="PLAYERID" optional="false"/>
+                </columns>
+            </meta>
+
+            <meta id="player_NAME" tableName="players" type="singlon" keyColumn="NAME" global="true">
+                <columns>
+                    <column name="NAME" optional="false"/>
+                </columns>
+            </meta>
+
+    </cache>
+
+    <improt_module>																								  <!--需要导入的模块 注意按导入顺序写-->
+        <module id="user"/>
+        <module id="mb_part"/>
+        <module id="msbase"/>																						<!--id是模块的id 与module中的id相对应-->	
+        <module id="ms"/>
+        <module id="ghbase"/>
+        <module id="gh"/>
+        <module id="TeamBase"/>
+        <module id="TeamBuilding"/>
+        <module id="cz"/>
+        <module id="cz"/>
+        <module id="Gold"/>
+    </improt_module>
+																												  <!-- dbconfig 数据库配置信息-->
+    <dbconfig
+            srcurl="jdbc:mysql://10.0.0.254/target1_4?useUnicode=true&amp;characterEncoding=utf8&amp;autoReconnect=true"
+            srcuser="root" srcpass="iTGBUS"
+            desturl="jdbc:mysql://10.0.0.254/0817_s6?useUnicode=true&amp;characterEncoding=utf8&amp;autoReconnect=true"
+            destuser="root" destpass="iTGBUS" driverName="com.mysql.jdbc.Driver"/>
+</datebase>

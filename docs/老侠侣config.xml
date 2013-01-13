@@ -1,0 +1,663 @@
+<!--
+替换时先去查找字段又没对对应的defaultVaule，如果没有默认的替换值，则通过searchMetaId查找缓存进行替换
+defaultVaule不能为"",defaultVaule如果要替换为空字符串写成defaultVaule=“#####”
+defaultVaule与searchMetaId 最多在一个replacecolumn 出现一个
+defaultVaule如果要替换为null串写成defaultVaule=“null”
+如果有searchMetaId属性，则要去缓存中去查找META
+
+-->
+<!DOCTYPE datebase SYSTEM "../configs/server-merger.dtd">
+<datebase step="5000">
+    <tasks>
+        <!--<task type="sql" name="pre" side="src"><![CDATA[ALTER TABLE `users` CHANGE `NAME` `NAMEsrc` VARCHAR(50) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT '' NOT NULL]]></task>-->
+        <!--<task type="sql" name="pre1" side="src"><![CDATA[ALTER TABLE `users` ADD COLUMN `NAME` VARCHAR(50) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT '' NOT NULL AFTER `USERID`;]]></task>-->
+        <!--<task type="sql" name="pre2" side="src"><![CDATA[UPDATE `users` SET `NAME`=TRIM(`NAMEsrc`)]]></task>-->
+        <!--<task type="sql" name="pre3" side="src"><![CDATA[ALTER TABLE `users` DROP INDEX USERNAME]]></task>-->
+        <!--<task type="sql" name="pre4" side="src"><![CDATA[ALTER TABLE `users` DROP COLUMN `NAMEsrc`]]></task>-->
+        <task type="merge" name="merge"/>
+
+    </tasks>
+    <modules>
+        <!--模块-->
+        <module id="users">
+            <include type="table" name="users"/>
+            <include type="table" name="users_meta"/>
+            <include type="table" name="users_profile"/>
+        </module>
+        <module id="players">
+            <include type="table" name="player"/>
+            <include type="table" name="player_buff"/>
+            <include type="table" name="player_daily_quest"/>
+            <include type="table" name="player_daily_quest_target"/>
+            <include type="table" name="player_quest"/>
+            <include type="table" name="player_quest_npc"/>
+            <include type="table" name="player_relation"/>
+            <include type="table" name="player_relation_log"/>
+            <include type="table" name="player_major"/>
+            <include type="table" name="player_society_skill"/>
+            <include type="table" name="pet"/>
+            <include type="table" name="pet_skill"/>
+            <include type="table" name="fight_state"/>
+            <include type="table" name="fight_state_detail"/>
+            <include type="table" name="player_raceinstance"/>
+
+        </module>
+        <module id="package">
+            <include type="table" name="player_stock"/>
+            <include type="table" name="player_stock_enchanting"/>
+            <include type="table" name="player_stock_partchip"/>
+        </module>
+        <module id="playerOther">
+            <include type="table" name="player_meta"/>
+        </module>
+        <module id="market">
+            <include type="table" name="player_market"/>
+            <include type="table" name="player_market_log"/>
+            <include type="table" name="pet_market"/>
+        </module>
+        <module id="league">
+            <include type="table" name="frat"/>
+            <include type="table" name="frat_event"/>
+            <include type="table" name="frat_member"/>
+            <include type="table" name="frat_log"/>
+        </module>
+        <module id="message">
+            <include type="table" name="message"/>
+            <include type="table" name="message_attachment"/>
+            <include type="table" name="message_placard"/>
+        </module>
+        <module id="achieve">
+            <include type="table" name="player_achieve"/>
+        </module>
+        <module id="server">
+            <include type="table" name="server_notice"/>
+            <include type="table" name="server_achieve"/>
+        </module>
+
+        <module id="other">
+            <include type="table" name="recharge_logs"/>
+
+            <!--<include type="table" name="player_addexp_logs"/>-->
+            <!--<include type="table" name="player_attacknpc_amount_log"/>-->
+
+            <!--<include type="table" name="player_autofight"/>-->
+            <!--<include type="table" name="player_autofight_log"/>-->
+
+            <!--<include type="table" name="pet_upgrade_logs"/>-->
+            <!--<include type="table" name="pet_addexp_logs"/>-->
+        </module>
+    </modules>
+    <tables>
+        <!--所有表的处理方式，属性包括 表明 主键 是否忽略主键， 导入表后是否更新临时表,查询该表的where条件-->
+
+        <!--module users start-->
+        <table name="users" impl="common">
+            <pk unset="true">
+                <column name="USERID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="USERID" canMiss="true" missWriteBack="true"
+                               searchMetaId="user_USERNAME" ispk="true"/>
+            </replace>
+            <noinsertmerge>
+                <noinsertmergecolumn name="GOLD" operation="+"/>
+            </noinsertmerge>
+            <Cache_write>
+                <metaid id="user_USERID"/>
+            </Cache_write>
+        </table>
+        <table name="users_meta" ignorefail="true" impl="common">
+            <pk unset="false">
+                <column name="USERID"/>
+                <column name="CODE"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="USERID" canMiss="false" searchMetaId="user_USERID"/>
+            </replace>
+        </table>
+        <table name="users_profile" ignorefail="true" impl="common">
+            <pk unset="false">
+                <column name="USERID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="USERID" canMiss="false" searchMetaId="user_USERID"/>
+            </replace>
+        </table>
+        <!--module users end-->
+        <!--module players start-->
+        <table name="player" impl="common" condition="LEVEL>=30">
+            <pk unset="true">
+                <column name="PLAYERID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="USERID" canMiss="false" searchMetaId="user_USERID"/>
+                <replacecolumn type="name" colname="NAME"/>
+                <replacecolumn type="default" colname="GENDER" rewriteValue="MALE"/>
+                <replacecolumn type="default" colname="GANG" rewriteValue="NONE"/>
+                <replacecolumn type="default" colname="SCENECODE" rewriteValue="NONE"/>
+                <replacecolumn type="rewrite" colname="STATE" rewriteValue="NORMAL"/>
+            </replace>
+            <Cache_write>
+                <metaid id="player_PLAYERID"/>
+                <metaid id="player_NAME"/>
+            </Cache_write>
+        </table>
+        <table name="player_meta" impl="common">
+            <pk unset="false">
+                <column name="PLAYERID"/>
+                <column name="CODE"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+                <replacecolumn type="default" colname="VALUE" rewriteValue="0"/>
+                <replacecolumn type="conditionalCache" colname="VALUE" canMiss="true">
+                    <columnAlias colname="STOCKID" alias="VALUE"/>
+                    <condition colname="CODE" value="AMULETS" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="CHEST" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="CLOAKS" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="FEET" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="HEAD" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="LEGS" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="RING" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="TRINKETS" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="WAIST" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="WEAPON" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                    <condition colname="CODE" value="WRIST" canMiss="true" searchMetaId="player_stock_STOCKID"/>
+                </replacecolumn>
+            </replace>
+        </table>
+        <table name="player_buff" impl="common">
+            <pk unset="true">
+                <column name="BUFFID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+        </table>
+        <table name="player_addexp_logs" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+        </table>
+        <table name="player_attacknpc_amount_log" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+        </table>
+        <table name="player_autofight" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+            <Cache_write>
+                <metaid id="player_autofight_ID"/>
+            </Cache_write>
+
+        </table>
+
+        <table name="player_autofight_log" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="AUTOFIGHT" canMiss="false" searchMetaId="player_autofight_ID">
+                    <columnAlias colname="ID" alias="AUTOFIGHT"/>
+                </replacecolumn>
+            </replace>
+        </table>
+        <table name="pet" impl="common">
+            <pk unset="true">
+                <column name="PETID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+            <Cache_write>
+                <metaid id="pet_PETID"/>
+            </Cache_write>
+
+        </table>
+        <table name="pet_addexp_logs" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+                <replacecolumn type="cache" colname="PETID" canMiss="false" searchMetaId="pet_PETID"/>
+            </replace>
+
+        </table>
+
+        <table name="pet_skill" impl="common">
+            <pk unset="false">
+                <column name="PETID"/>
+                <column name="SKILLCODE"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PETID" canMiss="false" searchMetaId="pet_PETID"/>
+            </replace>
+
+        </table>
+        <table name="pet_upgrade_logs" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PETID" canMiss="false" searchMetaId="pet_PETID"/>
+            </replace>
+
+        </table>
+
+
+        <table name="player_daily_quest" impl="common">
+            <pk unset="true">
+                <column name="QUESTID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+            <Cache_write>
+                <metaid id="player_daily_quest_QUESTID"/>
+            </Cache_write>
+        </table>
+        <table name="player_daily_quest_target" impl="common">
+            <pk unset="true">
+                <column name="TARGETID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="QUESTID" canMiss="false"
+                               searchMetaId="player_daily_quest_QUESTID"/>
+            </replace>
+        </table>
+        <table name="player_quest" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+                <replacecolumn type="default" colname="QUESTTYPE" rewriteValue="MAINLINE"/>
+                <replacecolumn type="conditionalCache" colname="QUESTID" canMiss="true">
+                    <condition colname="QUESTTYPE" value="DAILY" searchMetaId="player_daily_quest_QUESTID"
+                               canMiss="false"/>
+                </replacecolumn>
+            </replace>
+        </table>
+        <table name="player_quest_npc" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+        </table>
+        <table name="player_relation" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+                <replacecolumn type="cache" colname="TARGETID" canMiss="false" searchMetaId="player_PLAYERID">
+                    <columnAlias colname="PLAYERID" alias="TARGETID"/>
+                </replacecolumn>
+            </replace>
+        </table>
+        <table name="player_relation_log" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+                <replacecolumn type="cache" colname="TARGETID" canMiss="false" searchMetaId="player_PLAYERID">
+                    <columnAlias colname="PLAYERID" alias="TARGETID"/>
+                </replacecolumn>
+            </replace>
+        </table>
+        <table name="fight_state" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="conditionalCache" colname="REFID" canMiss="false">
+                    <columnAlias colname="PLAYERID" alias="REFID"/>
+                    <columnAlias colname="PETID" alias="REFID"/>
+                    <condition colname="TYPE" value="PLAYER" searchMetaId="player_PLAYERID"
+                               canMiss="false"/>
+                    <condition colname="TYPE" value="PET" searchMetaId="pet_PETID"
+                               canMiss="false"/>
+                </replacecolumn>
+            </replace>
+        </table>
+        <table name="fight_state_detail" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="conditionalCache" colname="REFID" canMiss="false">
+                    <columnAlias colname="PLAYERID" alias="REFID"/>
+                    <columnAlias colname="PETID" alias="REFID"/>
+                    <condition colname="TYPE" value="PLAYER" searchMetaId="player_PLAYERID"
+                               canMiss="false"/>
+                    <condition colname="TYPE" value="PET" searchMetaId="pet_PETID"
+                               canMiss="false"/>
+                </replacecolumn>
+            </replace>
+        </table>
+        <table name="player_major" impl="common">
+            <pk unset="false">
+                <column name="PLAYERID"/>
+                <column name="MAJORCODE"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+        </table>
+        <table name="player_society_skill" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+        </table>
+        <table name="recharge_logs" impl="common" condition="`CURRENCY`='GOLD'">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="USERID" canMiss="false" searchMetaId="user_USERID"/>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="true" searchMetaId="player_PLAYERID"/>
+            </replace>
+        </table>
+        <table name="player_raceinstance" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+        </table>
+        <!--module players end-->
+        <!--module package start-->
+        <table name="player_stock" impl="common">
+            <pk unset="true">
+                <column name="STOCKID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+            <Cache_write>
+                <metaid id="player_stock_STOCKID"/>
+            </Cache_write>
+        </table>
+        <table name="player_stock_enchanting" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="STOCKID" canMiss="false" searchMetaId="player_stock_STOCKID"/>
+            </replace>
+        </table>
+        <table name="player_stock_partchip" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="STOCKID" canMiss="false" searchMetaId="player_stock_STOCKID"/>
+            </replace>
+        </table>
+
+        <!--module package end-->
+        <!--module market start-->
+        <table name="player_market" impl="common">
+            <pk unset="true">
+                <column name="MARKETID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="STOCKID" canMiss="false" searchMetaId="player_stock_STOCKID"/>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+        </table>
+        <table name="player_market_log" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="STOCKID" canMiss="false" searchMetaId="player_stock_STOCKID"/>
+                <replacecolumn type="cache" colname="SELLERID" canMiss="false" searchMetaId="player_PLAYERID">
+                    <columnAlias colname="PLAYERID" alias="SELLERID"/>
+                </replacecolumn>
+                <replacecolumn type="cache" colname="BUYERID" canMiss="false" searchMetaId="player_PLAYERID">
+                    <columnAlias colname="PLAYERID" alias="SELLERID"/>
+                </replacecolumn>
+            </replace>
+        </table>
+        <table name="pet_market" impl="common">
+            <pk unset="true">
+                <column name="PETMARKETID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PETID" canMiss="false" searchMetaId="pet_PETID"/>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+        </table>
+        <!--module market end-->
+        <!--module league start-->
+        <table name="frat" impl="common">
+            <pk unset="true">
+                <column name="FRATID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="name" colname="NAME"/>
+            </replace>
+            <Cache_write>
+                <metaid id="frat_FRATID"/>
+            </Cache_write>
+        </table>
+        <table name="frat_event" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="FRATID" canMiss="false" searchMetaId="frat_FRATID"/>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="true" searchMetaId="player_PLAYERID"/>
+                <replacecolumn type="cache" colname="TARGETID" canMiss="true" searchMetaId="player_PLAYERID">
+                    <columnAlias colname="PLAYERID" alias="TARGETID"/>
+                </replacecolumn>
+            </replace>
+        </table>
+
+        <table name="frat_member" impl="common">
+            <pk unset="true">
+                <column name="MEMBERID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="FRATID" canMiss="false" searchMetaId="frat_FRATID"/>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+                <replacecolumn type="default" colname="ROLE" rewriteValue="MEMBER"/>
+            </replace>
+        </table>
+
+        <table name="frat_log" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="FRATID" canMiss="false" searchMetaId="frat_FRATID"/>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="true" searchMetaId="player_PLAYERID"/>
+                <replacecolumn type="cache" colname="TARGETID" canMiss="true" searchMetaId="player_PLAYERID">
+                    <columnAlias colname="PLAYERID" alias="TARGETID"/>
+                </replacecolumn>
+            </replace>
+        </table>
+        <!--module league end-->
+        <!--module message start-->
+        <table name="message" impl="common">
+            <pk unset="true">
+                <column name="MESSAGEID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="default" colname="TYPE" rewriteValue="SYSTEM"/>
+                <replacecolumn type="cache" colname="ADDRESSER" canMiss="true" searchMetaId="player_PLAYERID">
+                    <columnAlias colname="PLAYERID" alias="ADDRESSER"/>
+                </replacecolumn>
+                <replacecolumn type="cache" colname="ADDRESSEE" canMiss="true" searchMetaId="player_PLAYERID">
+                    <columnAlias colname="PLAYERID" alias="ADDRESSEE"/>
+                </replacecolumn>
+            </replace>
+            <Cache_write>
+                <metaid id="message_MESSAGEID"/>
+            </Cache_write>
+        </table>
+        <table name="message_attachment" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="default" colname="ITEMTYPE" rewriteValue="STOCK"/>
+                <replacecolumn type="cache" colname="ATTACHMENTID" canMiss="false" searchMetaId="message_MESSAGEID">
+                    <columnAlias colname="MESSAGEID" alias="ATTACHMENTID"/>
+                </replacecolumn>
+                <replacecolumn type="conditionalCache" colname="ITEMID" canMiss="true">
+                    <columnAlias colname="STOCKID" alias="ITEMID"/>
+                    <condition colname="ITEMTYPE" value="STOCK" canMiss="false" searchMetaId="player_stock_STOCKID"/>
+                </replacecolumn>
+            </replace>
+        </table>
+
+        <table name="message_placard" impl="common">
+            <pk unset="true">
+                <column name="PLACARDID"/>
+            </pk>
+        </table>
+        <!--module message end-->
+        <!--module achieve start-->
+        <table name="player_achieve" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="cache" colname="PLAYERID" canMiss="false" searchMetaId="player_PLAYERID"/>
+            </replace>
+        </table>
+        <!--module achieve end-->
+        <!--module server start-->
+        <table name="server_achieve" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="listCache" colname="PLAYERIDS" determinter="," canMiss="true"
+                               searchMetaId="player_PLAYERID">
+                    <columnAlias colname="PLAYERID" alias="PLAYERIDS"/>
+                </replacecolumn>
+            </replace>
+        </table>
+        <table name="server_notice" impl="common">
+            <pk unset="true">
+                <column name="ID"/>
+            </pk>
+            <replace>
+                <replacecolumn type="default" colname="TYPE" rewriteValue="ONCE"/>
+                <replacecolumn type="default" colname="STATE" rewriteValue="ON"/>
+            </replace>
+        </table>
+        <!--module server end-->
+
+    </tables>
+    <cache>
+        <metas>
+            <meta id="user_USERID" tableName="users" type="singlon" keyColumn="USERID">
+                <columns>
+                    <column name="USERID" optional="false"/>
+                </columns>
+            </meta>
+            <meta id="user_USERNAME" tableName="users" type="singlon" keyColumn="USERID" global="true">
+                <columns>
+                    <column name="NAME" optional="false"/>
+                </columns>
+            </meta>
+            <meta id="player_PLAYERID" tableName="players" type="singlon" keyColumn="PLAYERID">
+                <columns>
+                    <column name="PLAYERID" optional="false"/>
+                </columns>
+            </meta>
+
+            <meta id="player_NAME" tableName="players" type="singlon" keyColumn="NAME" global="true">
+                <columns>
+                    <column name="NAME" optional="false"/>
+                </columns>
+            </meta>
+
+            <meta id="player_autofight_ID" tableName="player_autofight" type="singlon" keyColumn="ID">
+                <columns>
+                    <column name="ID" optional="false"/>
+                </columns>
+            </meta>
+            <meta id="pet_PETID" tableName="pet" type="singlon" keyColumn="PETID">
+                <columns>
+                    <column name="PETID" optional="false"/>
+                </columns>
+            </meta>
+            <meta id="player_daily_quest_QUESTID" tableName="player_daily_quest" type="singlon" keyColumn="QUESTID">
+                <columns>
+                    <column name="QUESTID" optional="false"/>
+                </columns>
+            </meta>
+
+            <meta id="player_stock_STOCKID" tableName="player_stock" type="singlon" keyColumn="STOCKID">
+                <columns>
+                    <column name="STOCKID" optional="false"/>
+                </columns>
+            </meta>
+
+            <meta id="frat_FRATID" tableName="frat" type="singlon" keyColumn="FRATID">
+                <columns>
+                    <column name="FRATID" optional="false"/>
+                </columns>
+            </meta>
+
+            <meta id="message_MESSAGEID" tableName="message" type="singlon" keyColumn="MESSAGEID">
+                <columns>
+                    <column name="MESSAGEID" optional="false"/>
+                </columns>
+            </meta>
+
+        </metas>
+    </cache>
+    <import_module>
+        <!--用户和充值-->
+        <module id="users"/>
+        <!--玩家-->
+        <module id="players"/>
+        <!--包裹-->
+        <module id="package"/>
+        <!--玩家其他信息-->
+        <module id="playerOther"/>
+        <!--交易市场-->
+        <module id="market"/>
+        <!--工会-->
+        <module id="league"/>
+        <!--信函-->
+       <!-- <module id="message"/>-->
+        <!--成就-->
+        <module id="achieve"/>
+        <!--服务器模块，包括：服务器成就、公告-->
+        <module id="server"/>
+        <!--其他日志表-->
+        <module id="other"/>
+    </import_module>
+
+    <dbconfig
+            srcurl="jdbc:mysql://10.0.0.246/0926_t2?useUnicode=true&amp;characterEncoding=utf8&amp;autoReconnect=true"
+            srcuser="root" srcpass="iTGBUS"
+            desturl="jdbc:mysql://10.0.0.246/emprise_merge?useUnicode=true&amp;characterEncoding=utf8&amp;autoReconnect=true"
+            destuser="root" destpass="iTGBUS" driverName="com.mysql.jdbc.Driver"/>
+</datebase>
